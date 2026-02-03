@@ -15,7 +15,127 @@ This repository documents hands-on learning through practical Android applicatio
 - Integrate web content and multimedia components
 - Apply best practices in mobile application development
 
-## 📂 Repository Structure
+## � Quick Reference Guide
+
+### Essential Android Components Quick Reference
+
+| Component | Purpose | Key Methods | Usage Example |
+|-----------|---------|-------------|---------------|
+| **TextView** | Display text | `setText()`, `getText()` | `textView.setText("Hello");` |
+| **EditText** | User input | `getText()`, `setHint()` | `String input = editText.getText().toString();` |
+| **Button** | User action | `setOnClickListener()` | `button.setOnClickListener(v -> {...});` |
+| **ListView** | Scrollable list | `setAdapter()` | `listView.setAdapter(adapter);` |
+| **RecyclerView** | Modern list | `setLayoutManager()`, `setAdapter()` | `recyclerView.setLayoutManager(new LinearLayoutManager(this));` |
+| **Intent** | Navigation | `putExtra()`, `startActivity()` | `startActivity(new Intent(this, NextActivity.class));` |
+| **SQLiteDatabase** | Data storage | `insert()`, `query()`, `update()`, `delete()` | `db.insert("table", null, values);` |
+| **AlertDialog** | User prompt | `setTitle()`, `setMessage()` | `new AlertDialog.Builder(this).setTitle("Title").show();` |
+
+### Lifecycle Methods Quick Reference
+
+```java
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        // Initialize UI, set layout, initialize variables
+    }
+    
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Activity becoming visible
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Activity in foreground, start animations/sensors
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Activity partially obscured, pause animations
+    }
+    
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Activity no longer visible, save data
+    }
+    
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        // Activity being destroyed, release resources
+    }
+}
+```
+
+### Common Intent Actions
+
+```java
+// Open webpage
+Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://example.com"));
+startActivity(browserIntent);
+
+// Make phone call
+Intent callIntent = new Intent(Intent.ACTION_DIAL);
+callIntent.setData(Uri.parse("tel:1234567890"));
+startActivity(callIntent);
+
+// Send email
+Intent emailIntent = new Intent(Intent.ACTION_SEND);
+emailIntent.setType("text/plain");
+emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[]{"email@example.com"});
+emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Subject");
+startActivity(Intent.createChooser(emailIntent, "Send Email"));
+
+// Share text
+Intent shareIntent = new Intent(Intent.ACTION_SEND);
+shareIntent.setType("text/plain");
+shareIntent.putExtra(Intent.EXTRA_TEXT, "Text to share");
+startActivity(Intent.createChooser(shareIntent, "Share via"));
+```
+
+### SQLite Query Templates
+
+```java
+// Create table
+String CREATE_TABLE = "CREATE TABLE users (" +
+    "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+    "name TEXT NOT NULL, " +
+    "email TEXT UNIQUE, " +
+    "created_at DATETIME DEFAULT CURRENT_TIMESTAMP)";
+
+// Insert data
+ContentValues values = new ContentValues();
+values.put("name", "John Doe");
+values.put("email", "john@example.com");
+long id = db.insert("users", null, values);
+
+// Query with selection
+String[] projection = {"id", "name", "email"};
+String selection = "name LIKE ?";
+String[] selectionArgs = {"%John%"};
+Cursor cursor = db.query("users", projection, selection, selectionArgs, 
+                        null, null, "name ASC");
+
+// Update data
+ContentValues updateValues = new ContentValues();
+updateValues.put("email", "newemail@example.com");
+int rowsAffected = db.update("users", updateValues, "id = ?", 
+                             new String[]{String.valueOf(id)});
+
+// Delete data
+int rowsDeleted = db.delete("users", "id = ?", new String[]{String.valueOf(id)});
+
+// Raw query
+Cursor rawCursor = db.rawQuery("SELECT * FROM users WHERE age > ?", 
+                               new String[]{"18"});
+```
+
+## �📂 Repository Structure
 
 ### Lab Work Sessions
 The `00.LabWork/` directory contains organized lab sessions from September 2025 to February 2026, covering the progression of Android development concepts across 26+ sessions.
@@ -686,6 +806,252 @@ By completing this course, students gain proficiency in:
 - Following Android development best practices
 - Version control with Git
 
+## ⚠️ Common Mistakes to Avoid
+
+### 1. Memory Leaks
+
+**Mistake:** Static references to Context or Views
+```java
+// BAD - Memory leak!
+public class MainActivity extends AppCompatActivity {
+    private static Context context;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        context = this; // Leaks the Activity!
+    }
+}
+```
+
+**Solution:** Use Application Context or WeakReference
+```java
+// GOOD
+public class MyApp extends Application {
+    private static Context appContext;
+    
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        appContext = getApplicationContext();
+    }
+}
+```
+
+### 2. Not Closing Resources
+
+**Mistake:** Forgetting to close Cursor/Database
+```java
+// BAD
+Cursor cursor = db.query("users", null, null, null, null, null, null);
+while (cursor.moveToNext()) {
+    // Process data
+}
+// Cursor never closed - memory leak!
+```
+
+**Solution:** Use try-finally or try-with-resources
+```java
+// GOOD
+Cursor cursor = null;
+try {
+    cursor = db.query("users", null, null, null, null, null, null);
+    while (cursor != null && cursor.moveToNext()) {
+        // Process data
+    }
+} finally {
+    if (cursor != null) {
+        cursor.close();
+    }
+}
+```
+
+### 3. Blocking UI Thread
+
+**Mistake:** Performing long operations on main thread
+```java
+// BAD - Freezes UI!
+button.setOnClickListener(v -> {
+    // Network call on main thread
+    String result = downloadData("https://api.example.com");
+    textView.setText(result);
+});
+```
+
+**Solution:** Use AsyncTask or background threads
+```java
+// GOOD
+button.setOnClickListener(v -> {
+    new Thread(() -> {
+        String result = downloadData("https://api.example.com");
+        runOnUiThread(() -> textView.setText(result));
+    }).start();
+});
+```
+
+### 4. Hardcoded Strings
+
+**Mistake:** Hardcoding text in Java code
+```java
+// BAD - Not translatable, difficult to maintain
+textView.setText("Welcome to the app");
+button.setText("Click Me");
+```
+
+**Solution:** Use string resources
+```java
+// GOOD
+textView.setText(R.string.welcome_message);
+button.setText(R.string.button_label);
+```
+
+**strings.xml:**
+```xml
+<resources>
+    <string name="welcome_message">Welcome to the app</string>
+    <string name="button_label">Click Me</string>
+</resources>
+```
+
+### 5. SQL Injection Vulnerability
+
+**Mistake:** String concatenation in SQL queries
+```java
+// BAD - SQL Injection risk!
+String username = editText.getText().toString();
+String query = "SELECT * FROM users WHERE username = '" + username + "'";
+Cursor cursor = db.rawQuery(query, null);
+```
+
+**Solution:** Use parameterized queries
+```java
+// GOOD
+String username = editText.getText().toString();
+String query = "SELECT * FROM users WHERE username = ?";
+Cursor cursor = db.rawQuery(query, new String[]{username});
+```
+
+### 6. Not Handling Null Values
+
+**Mistake:** Assuming objects are never null
+```java
+// BAD - NullPointerException risk!
+String text = editText.getText().toString();
+int length = text.length(); // Crashes if editText is null
+```
+
+**Solution:** Always check for null
+```java
+// GOOD
+if (editText != null && editText.getText() != null) {
+    String text = editText.getText().toString();
+    int length = text.length();
+}
+```
+
+### 7. Ignoring Activity Lifecycle
+
+**Mistake:** Not saving state on configuration change
+```java
+// BAD - Data lost on screen rotation
+private int counter = 0;
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    // counter resets to 0 on rotation
+}
+```
+
+**Solution:** Save and restore state
+```java
+// GOOD
+private int counter = 0;
+
+@Override
+protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    if (savedInstanceState != null) {
+        counter = savedInstanceState.getInt("counter", 0);
+    }
+}
+
+@Override
+protected void onSaveInstanceState(Bundle outState) {
+    super.onSaveInstanceState(outState);
+    outState.putInt("counter", counter);
+}
+```
+
+### 8. Poor RecyclerView Performance
+
+**Mistake:** Not using ViewHolder pattern properly
+```java
+// BAD - Creates new views every time!
+@Override
+public void onBindViewHolder(ViewHolder holder, int position) {
+    View view = LayoutInflater.from(context).inflate(R.layout.item, null);
+    TextView textView = view.findViewById(R.id.text);
+    textView.setText(data.get(position));
+}
+```
+
+**Solution:** Reuse ViewHolder views
+```java
+// GOOD
+@Override
+public void onBindViewHolder(ViewHolder holder, int position) {
+    holder.textView.setText(data.get(position));
+}
+```
+
+### 9. Not Validating User Input
+
+**Mistake:** Processing input without validation
+```java
+// BAD - App crashes on invalid input
+String ageStr = ageEditText.getText().toString();
+int age = Integer.parseInt(ageStr); // NumberFormatException if empty!
+```
+
+**Solution:** Validate before processing
+```java
+// GOOD
+String ageStr = ageEditText.getText().toString().trim();
+if (!ageStr.isEmpty()) {
+    try {
+        int age = Integer.parseInt(ageStr);
+        if (age > 0 && age < 150) {
+            // Valid age
+        } else {
+            Toast.makeText(this, "Invalid age", Toast.LENGTH_SHORT).show();
+        }
+    } catch (NumberFormatException e) {
+        Toast.makeText(this, "Please enter a valid number", Toast.LENGTH_SHORT).show();
+    }
+} else {
+    Toast.makeText(this, "Age is required", Toast.LENGTH_SHORT).show();
+}
+```
+
+### 10. Overusing Toast Messages
+
+**Mistake:** Using Toast for critical information
+```java
+// BAD - User might miss this important message
+Toast.makeText(this, "Account deleted successfully", Toast.LENGTH_SHORT).show();
+```
+
+**Solution:** Use appropriate UI elements
+```java
+// GOOD - Use AlertDialog for important actions
+new AlertDialog.Builder(this)
+    .setTitle("Success")
+    .setMessage("Account deleted successfully")
+    .setPositiveButton("OK", null)
+    .show();
+```
+
 ## ❓ Frequently Asked Questions (FAQ)
 
 ### General Questions
@@ -813,7 +1179,286 @@ A: Use ConstraintLayout and avoid hardcoded dp values. Use `match_parent`, `wrap
 - **Gradle Build Tool:** https://gradle.org/
 - **Material Design Guidelines:** https://material.io/design
 
-## 🔧 Common Challenges & Solutions
+## � Security Best Practices
+
+### Input Validation
+
+**Email Validation**
+```java
+public boolean isValidEmail(String email) {
+    if (email == null || email.trim().isEmpty()) {
+        return false;
+    }
+    String emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+";
+    return email.matches(emailPattern);
+}
+```
+
+**Password Strength Validation**
+```java
+public boolean isStrongPassword(String password) {
+    // At least 8 characters, 1 uppercase, 1 lowercase, 1 digit, 1 special char
+    String passwordPattern = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\\S+$).{8,}$";
+    return password != null && password.matches(passwordPattern);
+}
+```
+
+**Phone Number Validation**
+```java
+public boolean isValidPhone(String phone) {
+    if (phone == null || phone.trim().isEmpty()) {
+        return false;
+    }
+    // Matches formats: 1234567890, 123-456-7890, (123) 456-7890
+    String phonePattern = "^[\\d\\s()\\-]{10,}$";
+    return phone.matches(phonePattern);
+}
+```
+
+### Secure Data Storage
+
+**SharedPreferences (for non-sensitive data)**
+```java
+// Save data
+SharedPreferences prefs = getSharedPreferences("MyPrefs", MODE_PRIVATE);
+SharedPreferences.Editor editor = prefs.edit();
+editor.putString("username", username);
+editor.apply();
+
+// Retrieve data
+String username = prefs.getString("username", "default");
+```
+
+**Encrypted SharedPreferences (for sensitive data)**
+```java
+// Add dependency: implementation "androidx.security:security-crypto:1.1.0-alpha06"
+
+MasterKey masterKey = new MasterKey.Builder(context)
+    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+    .build();
+
+SharedPreferences sharedPreferences = EncryptedSharedPreferences.create(
+    context,
+    "secret_shared_prefs",
+    masterKey,
+    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+);
+
+// Use like normal SharedPreferences
+sharedPreferences.edit().putString("api_key", "secret_key").apply();
+```
+
+### Password Hashing (Basic Example)
+
+```java
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+public class PasswordUtils {
+    
+    public static String hashPassword(String password) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes());
+            StringBuilder hexString = new StringBuilder();
+            
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    public static boolean verifyPassword(String inputPassword, String storedHash) {
+        String inputHash = hashPassword(inputPassword);
+        return inputHash.equals(storedHash);
+    }
+}
+
+// Usage
+String hashedPassword = PasswordUtils.hashPassword("userPassword123");
+// Store hashedPassword in database
+
+// On login
+boolean isValid = PasswordUtils.verifyPassword(inputPassword, storedHashedPassword);
+```
+
+### SQL Injection Prevention
+
+```java
+// SECURE: Use parameterized queries
+public User getUserByUsername(String username) {
+    SQLiteDatabase db = dbHelper.getReadableDatabase();
+    
+    // Use ? placeholders
+    String query = "SELECT * FROM users WHERE username = ?";
+    Cursor cursor = db.rawQuery(query, new String[]{username});
+    
+    User user = null;
+    if (cursor.moveToFirst()) {
+        user = new User(
+            cursor.getInt(cursor.getColumnIndexOrThrow("id")),
+            cursor.getString(cursor.getColumnIndexOrThrow("username")),
+            cursor.getString(cursor.getColumnIndexOrThrow("email"))
+        );
+    }
+    cursor.close();
+    return user;
+}
+
+// Or use query() method
+public User getUserByUsername(String username) {
+    SQLiteDatabase db = dbHelper.getReadableDatabase();
+    
+    Cursor cursor = db.query(
+        "users",                          // table
+        new String[]{"id", "username", "email"},  // columns
+        "username = ?",                   // selection
+        new String[]{username},           // selectionArgs
+        null, null, null
+    );
+    
+    // ... process cursor
+}
+```
+
+### Network Security
+
+**AndroidManifest.xml - Enforce HTTPS**
+```xml
+<application
+    android:usesCleartextTraffic="false"
+    android:networkSecurityConfig="@xml/network_security_config">
+    <!-- ... -->
+</application>
+```
+
+**res/xml/network_security_config.xml**
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
+```
+
+### Permission Best Practices
+
+**Request Only Necessary Permissions**
+```xml
+<!-- AndroidManifest.xml -->
+<!-- Only request permissions your app actually needs -->
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.CAMERA" />
+```
+
+**Runtime Permission Request (Android 6.0+)**
+```java
+private static final int CAMERA_PERMISSION_CODE = 100;
+
+private void requestCameraPermission() {
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+        
+        if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                Manifest.permission.CAMERA)) {
+            // Show explanation why permission is needed
+            new AlertDialog.Builder(this)
+                .setTitle("Camera Permission")
+                .setMessage("This app needs camera access to take photos")
+                .setPositiveButton("OK", (dialog, which) -> {
+                    ActivityCompat.requestPermissions(MainActivity.this,
+                        new String[]{Manifest.permission.CAMERA},
+                        CAMERA_PERMISSION_CODE);
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+        } else {
+            ActivityCompat.requestPermissions(this,
+                new String[]{Manifest.permission.CAMERA},
+                CAMERA_PERMISSION_CODE);
+        }
+    }
+}
+
+@Override
+public void onRequestPermissionsResult(int requestCode, String[] permissions,
+                                       int[] grantResults) {
+    super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    
+    if (requestCode == CAMERA_PERMISSION_CODE) {
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            // Permission granted
+            openCamera();
+        } else {
+            Toast.makeText(this, "Camera permission denied", Toast.LENGTH_SHORT).show();
+        }
+    }
+}
+```
+
+### ProGuard/R8 Configuration (Code Obfuscation)
+
+**proguard-rules.pro**
+```proguard
+# Keep line numbers for debugging
+-keepattributes SourceFile,LineNumberTable
+
+# Keep custom model classes
+-keep class com.example.app.models.** { *; }
+
+# Keep database entities
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+
+# Remove logging in release builds
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+```
+
+### API Key Protection
+
+**gradle.properties (not committed to Git)**
+```properties
+API_KEY=your_secret_api_key_here
+```
+
+**build.gradle**
+```gradle
+android {
+    defaultConfig {
+        // Read from gradle.properties
+        buildConfigField "String", "API_KEY", "\"${API_KEY}\""
+    }
+}
+```
+
+**Usage in code**
+```java
+String apiKey = BuildConfig.API_KEY;
+```
+
+**.gitignore**
+```
+local.properties
+gradle.properties
+*.jks
+*.keystore
+```
+
+## �🔧 Common Challenges & Solutions
 
 ### Challenge 1: Activity Lifecycle Management
 **Problem:** Data loss when app goes to background or screen rotates.
@@ -932,6 +1577,343 @@ Students can showcase these projects:
 2. **CRUD Application** - Shows database management skills
 3. **Authentication System** - Proves security awareness
 4. **RecyclerView App** - Displays modern Android practices
+
+## 📚 Code Snippets Library
+
+### Utility Methods
+
+**Hide Keyboard**
+```java
+public void hideKeyboard(Activity activity) {
+    InputMethodManager imm = (InputMethodManager) 
+        activity.getSystemService(Activity.INPUT_METHOD_SERVICE);
+    View view = activity.getCurrentFocus();
+    if (view == null) {
+        view = new View(activity);
+    }
+    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+}
+```
+
+**Show Keyboard**
+```java
+public void showKeyboard(EditText editText) {
+    editText.requestFocus();
+    InputMethodManager imm = (InputMethodManager) 
+        getSystemService(Context.INPUT_METHOD_SERVICE);
+    imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT);
+}
+```
+
+**Check Internet Connection**
+```java
+public boolean isNetworkAvailable() {
+    ConnectivityManager connectivityManager = (ConnectivityManager) 
+        getSystemService(Context.CONNECTIVITY_SERVICE);
+    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+}
+```
+
+**Copy to Clipboard**
+```java
+public void copyToClipboard(String text, String label) {
+    ClipboardManager clipboard = (ClipboardManager) 
+        getSystemService(Context.CLIPBOARD_SERVICE);
+    ClipData clip = ClipData.newPlainText(label, text);
+    clipboard.setPrimaryClip(clip);
+    Toast.makeText(this, "Copied to clipboard", Toast.LENGTH_SHORT).show();
+}
+```
+
+**Format Date**
+```java
+public String formatDate(long timestamp, String pattern) {
+    SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.getDefault());
+    return sdf.format(new Date(timestamp));
+}
+
+// Usage:
+// String date = formatDate(System.currentTimeMillis(), "dd MMM yyyy, hh:mm a");
+```
+
+**Validate Empty Fields**
+```java
+public boolean validateFields(EditText... fields) {
+    for (EditText field : fields) {
+        if (field.getText().toString().trim().isEmpty()) {
+            field.setError("This field is required");
+            field.requestFocus();
+            return false;
+        }
+    }
+    return true;
+}
+
+// Usage: if (validateFields(nameEdit, emailEdit, passwordEdit)) { ... }
+```
+
+**Show Loading Dialog**
+```java
+private ProgressDialog progressDialog;
+
+public void showLoading(String message) {
+    if (progressDialog == null) {
+        progressDialog = new ProgressDialog(this);
+        progressDialog.setCancelable(false);
+    }
+    progressDialog.setMessage(message);
+    progressDialog.show();
+}
+
+public void hideLoading() {
+    if (progressDialog != null && progressDialog.isShowing()) {
+        progressDialog.dismiss();
+    }
+}
+```
+
+**Vibrate Device**
+```java
+// Add permission: <uses-permission android:name="android.permission.VIBRATE" />
+
+public void vibrate(long milliseconds) {
+    Vibrator vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, 
+            VibrationEffect.DEFAULT_AMPLITUDE));
+    } else {
+        vibrator.vibrate(milliseconds);
+    }
+}
+```
+
+### Custom Views Examples
+
+**Custom TextView with Font**
+```java
+public class CustomTextView extends androidx.appcompat.widget.AppCompatTextView {
+    
+    public CustomTextView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+    
+    private void init() {
+        Typeface typeface = Typeface.createFromAsset(getContext().getAssets(), 
+            "fonts/custom_font.ttf");
+        setTypeface(typeface);
+    }
+}
+```
+
+**Custom Button with Click Animation**
+```java
+public class AnimatedButton extends androidx.appcompat.widget.AppCompatButton {
+    
+    public AnimatedButton(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        setupAnimation();
+    }
+    
+    private void setupAnimation() {
+        setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    animate().scaleX(0.95f).scaleY(0.95f).setDuration(100).start();
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    animate().scaleX(1f).scaleY(1f).setDuration(100).start();
+                    break;
+            }
+            return false;
+        });
+    }
+}
+```
+
+### Animations
+
+**Fade In Animation**
+```java
+public void fadeIn(View view) {
+    view.setAlpha(0f);
+    view.setVisibility(View.VISIBLE);
+    view.animate()
+        .alpha(1f)
+        .setDuration(300)
+        .setListener(null);
+}
+```
+
+**Slide Up Animation**
+```java
+public void slideUp(View view) {
+    view.setVisibility(View.VISIBLE);
+    view.setTranslationY(view.getHeight());
+    view.animate()
+        .translationY(0)
+        .setDuration(300)
+        .setInterpolator(new DecelerateInterpolator())
+        .start();
+}
+```
+
+**Rotate Animation**
+```java
+public void rotate360(View view) {
+    view.animate()
+        .rotation(360f)
+        .setDuration(500)
+        .setInterpolator(new LinearInterpolator())
+        .start();
+}
+```
+
+### Database Helper Templates
+
+**Generic CRUD Operations**
+```java
+public class GenericDAO<T> {
+    private SQLiteDatabase db;
+    private String tableName;
+    
+    public long insert(ContentValues values) {
+        return db.insert(tableName, null, values);
+    }
+    
+    public List<T> getAll() {
+        List<T> items = new ArrayList<>();
+        Cursor cursor = db.query(tableName, null, null, null, null, null, null);
+        
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                items.add(cursorToObject(cursor));
+            }
+            cursor.close();
+        }
+        return items;
+    }
+    
+    public int update(ContentValues values, String whereClause, String[] whereArgs) {
+        return db.update(tableName, values, whereClause, whereArgs);
+    }
+    
+    public int delete(String whereClause, String[] whereArgs) {
+        return db.delete(tableName, whereClause, whereArgs);
+    }
+    
+    protected T cursorToObject(Cursor cursor) {
+        // Override in subclass
+        return null;
+    }
+}
+```
+
+### RecyclerView Templates
+
+**Simple String Adapter**
+```java
+public class SimpleAdapter extends RecyclerView.Adapter<SimpleAdapter.ViewHolder> {
+    private List<String> items;
+    private OnItemClickListener listener;
+    
+    public interface OnItemClickListener {
+        void onItemClick(String item, int position);
+    }
+    
+    public SimpleAdapter(List<String> items, OnItemClickListener listener) {
+        this.items = items;
+        this.listener = listener;
+    }
+    
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext())
+            .inflate(android.R.layout.simple_list_item_1, parent, false);
+        return new ViewHolder(view);
+    }
+    
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        String item = items.get(position);
+        holder.textView.setText(item);
+        holder.itemView.setOnClickListener(v -> 
+            listener.onItemClick(item, position));
+    }
+    
+    @Override
+    public int getItemCount() {
+        return items != null ? items.size() : 0;
+    }
+    
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView textView;
+        
+        ViewHolder(View itemView) {
+            super(itemView);
+            textView = itemView.findViewById(android.R.id.text1);
+        }
+    }
+}
+```
+
+## 🌐 Additional Learning Resources
+
+### Official Documentation
+- **Android Developers:** https://developer.android.com/
+- **Android API Reference:** https://developer.android.com/reference
+- **Material Design:** https://material.io/
+- **Android Jetpack:** https://developer.android.com/jetpack
+- **Android Studio User Guide:** https://developer.android.com/studio/intro
+
+### Online Courses & Tutorials
+- **Google Codelabs:** https://codelabs.developers.google.com/?cat=Android
+- **Android Basics in Kotlin:** https://developer.android.com/courses/android-basics-kotlin/course
+- **Udacity Android Courses:** https://www.udacity.com/courses/android
+- **Coursera Mobile Development:** https://www.coursera.org/courses?query=android
+
+### YouTube Channels
+- **Android Developers (Official):** Best practices and new features
+- **Coding in Flow:** Android tutorials for beginners to advanced
+- **Philipp Lackner:** Modern Android development
+- **Simplified Coding:** Clear, simple Android tutorials
+
+### Community & Forums
+- **Stack Overflow - Android Tag:** https://stackoverflow.com/questions/tagged/android
+- **Reddit r/androiddev:** https://reddit.com/r/androiddev
+- **Android Discord Communities:** Various active developer servers
+- **XDA Developers Forum:** https://forum.xda-developers.com/
+
+### Blogs & Articles
+- **Android Developers Blog:** https://android-developers.googleblog.com/
+- **Medium - Android Development:** Quality articles from developers
+- **ProAndroidDev:** https://proandroiddev.com/
+- **Vogella Android Tutorials:** https://www.vogella.com/tutorials/android.html
+
+### Tools & Libraries
+- **GitHub - Android Arsenal:** https://android-arsenal.com/
+- **Android Asset Studio:** https://romannurik.github.io/AndroidAssetStudio/
+- **Shape Shifter:** https://shapeshifter.design/ (SVG animation tool)
+- **Material Design Icons:** https://fonts.google.com/icons
+
+### Books (Recommended)
+- "Head First Android Development" by Dawn Griffiths
+- "Android Programming: The Big Nerd Ranch Guide"
+- "Effective Java" by Joshua Bloch (Java best practices)
+- "Clean Code" by Robert C. Martin
+
+### Sample Projects & References
+- **Google Samples:** https://github.com/android (Official Android samples)
+- **Android Sunflower:** https://github.com/android/sunflower (Best practices demo)
+- **Architecture Components Samples:** https://github.com/android/architecture-components-samples
+
+### Stay Updated
+- **Android Weekly Newsletter:** https://androidweekly.net/
+- **Kotlin Weekly:** https://kotlinweekly.net/
+- **Google I/O Recordings:** Annual Android announcements
+- **Android Dev Summit:** Android-focused conference
 
 ## 🤝 Contributing
 
